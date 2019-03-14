@@ -156,6 +156,15 @@ architecture rtl of top is
   signal dir_blue            : std_logic_vector(7 downto 0);
   signal dir_pixel_column    : std_logic_vector(10 downto 0);
   signal dir_pixel_row       : std_logic_vector(10 downto 0);
+  
+  signal counter			  : std_logic_vector(12 downto 0);
+	signal off			  : std_logic_vector(12 downto 0);
+	signal cnt			  : std_logic_vector(12 downto 0);
+	signal off_g			  : std_logic_vector(12 downto 0);
+	signal cnt_g			  : std_logic_vector(32 downto 0);
+	
+		
+
 
 begin
 
@@ -168,8 +177,8 @@ begin
   graphics_lenght <= conv_std_logic_vector(MEM_SIZE*8*8, GRAPH_MEM_ADDR_WIDTH);
   
   -- removed to inputs pin
-  direct_mode <= '1';
-  display_mode     <= "10";  -- 01 - text mode, 10 - graphics mode, 11 - text & graphics
+  --direct_mode <= '1';
+  display_mode     <= "11";  -- 01 - text mode, 10 - graphics mode, 11 - text & graphics
   
   font_size        <= x"1";
   show_frame       <= '1';
@@ -245,21 +254,174 @@ begin
     green_o            => green_o,
     blue_o             => blue_o     
   );
-  
+
   -- na osnovu signala iz vga_top modula dir_pixel_column i dir_pixel_row realizovati logiku koja genereise
   --dir_red
   --dir_green
   --dir_blue
- 
+   
+  process(dir_pixel_column) begin
+  
+  if(dir_pixel_column <80) then
+		dir_red <= "11111111";
+		dir_green <= "11111111";
+		dir_blue <= "11111111";
+	
+  
+  elsif(dir_pixel_column>=80 and dir_pixel_column<160) then
+		dir_red <= "11000100";
+		dir_green <= "11000100";
+		dir_blue <= "00000000";
+
+		
+  elsif(dir_pixel_column>=160 and dir_pixel_column<240) then
+		dir_red <= "00000000";
+		dir_green <= "11000100";
+		dir_blue <= "11000100";
+
+  
+  elsif(dir_pixel_column>=240 and dir_pixel_column<320) then
+		
+		dir_red <= "00000000";
+		dir_green <= "11000100";
+		dir_blue <= "00000000";
+
+  elsif(dir_pixel_column>=320 and  dir_pixel_column<400) then
+		
+		dir_red <= "11000100";
+		dir_green <= "00000000";
+		dir_blue <= "11000100";
+  elsif(dir_pixel_column>=400 and  dir_pixel_column<480) then
+
+		dir_red <= "11000100";
+		dir_green <= "00000000";
+		dir_blue <= "00000000";
+  
+  
+  elsif(dir_pixel_column>=480 and  dir_pixel_column<560) then
+  		dir_red <= "00000000";
+		dir_green <= "00000000";
+		dir_blue <= "11000100";
+  else
+		dir_red <= "00000000";
+		dir_green <= "00000000";
+		dir_blue <= "00000000";
+
+  
+  end if;
+  
+  end process;
+  
   -- koristeci signale realizovati logiku koja pise po TXT_MEM
   --char_address
   --char_value
   --char_we
+  
+ char_we<='1';
+ 
+  
+  process(pix_clock_s) begin
+	if(rising_edge(pix_clock_s)) then
+		if(counter = "1001010111111") then
+			counter<= (others=>'0');
+			cnt <= cnt + 1;
+			if(cnt = 100)then
+				cnt <= "0000000000000";			
+				if(off = 1200)then
+					off <= "0000000000000";
+				else
+					off <= off+1;
+				end if;
+			end if;
+		else
+			counter<= counter+1;
+			
+		end if;
+		
+		
+		
+	char_address<="0" & (counter + off);
+		case(counter) is
+			when "0000000000001" =>char_value<="000001";
+			when "0000000000010" =>char_value<="000010";
+			when "0000000000011" =>char_value<="000011";
+			when "0000000000100" =>char_value<="000100";
+			when others => char_value <="100000";
+		end case;
+	end if;
+	
+	
+  
+  end process;
+  
+
+  
+ 
   
   -- koristeci signale realizovati logiku koja pise po GRAPH_MEM
   --pixel_address
   --pixel_value
   --pixel_we
   
+  pixel_we <= '1';
+  
+   process (pix_clock_s) begin
+	
+	if(pix_clock_s'event and pix_clock_s = '1') then
+		
+		if(pixel_address = "10010110000") then
+			pixel_address <= (others => '0');
+		else
+			pixel_address <= pixel_address + 1;
+		end if;
+		
+		
+		if(cnt_g = 24000000)then
+			if(off_g = 624)then
+				off_g <= (others => '0');
+			else 
+				off_g <= off_g + 1;
+			end if;
+			cnt_g <= (others => '0');
+		else
+			cnt_g <= cnt_g+1;
+		end if;
+			
+	end if;
+	end process;
+	
+	pixel_value <= x"ffffffff" when pixel_address = 0+off_g   else
+						x"ffffffff" when pixel_address = 20+off_g   else
+						x"ffffffff" when pixel_address = 40+off_g   else
+						x"ffffffff" when pixel_address = 60+off_g   else
+						x"ffffffff" when pixel_address = 80+off_g   else
+						x"ffffffff" when pixel_address = 100+off_g   else
+						x"ffffffff" when pixel_address = 120+off_g   else
+						x"ffffffff" when pixel_address = 140+off_g   else
+						x"ffffffff" when pixel_address = 160+off_g   else
+						x"ffffffff" when pixel_address = 180+off_g   else
+						x"ffffffff" when pixel_address = 200+off_g   else
+						x"ffffffff" when pixel_address = 220+off_g   else
+						x"ffffffff" when pixel_address = 240+off_g   else
+						x"ffffffff" when pixel_address = 260+off_g   else
+						x"ffffffff" when pixel_address = 280+off_g   else
+						x"ffffffff" when pixel_address = 300+off_g   else
+						x"ffffffff" when pixel_address = 320+off_g   else
+						x"ffffffff" when pixel_address = 340+off_g   else
+						x"ffffffff" when pixel_address = 360+off_g   else
+						x"ffffffff" when pixel_address = 380+off_g   else
+						x"ffffffff" when pixel_address = 400+off_g   else
+						x"ffffffff" when pixel_address = 420+off_g   else
+						x"ffffffff" when pixel_address = 440+off_g   else
+						x"ffffffff" when pixel_address = 460+off_g   else
+						x"ffffffff" when pixel_address = 480+off_g   else
+						x"ffffffff" when pixel_address = 500+off_g   else
+						x"ffffffff" when pixel_address = 520+off_g   else
+						x"ffffffff" when pixel_address = 540+off_g   else
+						x"ffffffff" when pixel_address = 560+off_g   else
+						x"ffffffff" when pixel_address = 580+off_g   else
+						x"ffffffff" when pixel_address = 600+off_g   else
+						x"ffffffff" when pixel_address = 620+off_g   else
+					   x"00000000";
   
 end rtl;
